@@ -19,9 +19,6 @@ let parseInputLine inputLine =
        | _ -> parseFailure ())
   | _ -> parseFailure ()
 
-let switchFile file filename =
-  (close_in file; open_in filename)
-
 let streamFromFile file =
   Stream.from (fun _ -> try Some (input_line file) with End_of_file -> None)
 
@@ -32,12 +29,19 @@ let containsMatch re line =
   with Not_found -> false
 
 exception Break
+exception Return
+
+type 'a file_filename = {
+  file : 'a;
+  filename : string;
+}
 
 let main arg0 argv =
   let Options.{
     pattern = inputPattern;
+    replace;
     input;
-    invert;
+    global;
     caseSensitive;
   } = Options.parseArgs argv in
 
@@ -56,58 +60,95 @@ let main arg0 argv =
 
   (* We keep three pieces of state, to avoid reopening files and rereading
    * lines that we've already seen. *)
-  let openFilename = ref None in
-  let openFile = ref None in
+  let source = ref None in
+  let sink = ref None in
   let currLineno = ref 0 in
 
+  let openSourceSink filename =
+    let _ = currLineno := 0 in
+    let file = open_in filename in
+    let mode = [Open_text; Open_wronly; Open_creat] in
+    let prefix = "tmp." in
+    let suffix = "" in
+    let (tempFilename, tempFile) = Filename.open_temp_file ~mode prefix suffix in
+
+    (file, tempFilename, tempFile)
+  in
+
+  let closeSourceSink source sink =
+    try
+      while true; do
+        Printf.fprintf sink.file "%s\n" (input_line source.file)
+      done
+    with End_of_file -> ();
+
+    let _ = close_in source.file in
+    let _ = close_out sink.file in
+
+    Sys.rename sink.filename source.filename
+  in
+
   let processLine inputLine =
-    let (filename, lineno) = parseInputLine inputLine in
+    try
+      let (filename, lineno) = parseInputLine inputLine in
 
-    (* We go through great effort to reuse a file that's already open. *)
-    let file =
-      match !openFile with
-      | None -> open_in filename
-      | Some f ->
-          if !openFilename != Some filename then
-            (currLineno := 0;
-             switchFile f filename)
-          else if !currLineno < lineno then
-            f
-          else
-            (* Close and reopen the same file to reset the stream. *)
-            (prerr_endline @@ "warning: lines for "^filename^" do not strictly increase";
-             switchFile f filename)
-    in
+      (* We go through great effort to reuse a file that's already open. *)
+      let (file, tempFilename, tempFile) =
+        match (!source, !sink) with
+        | (None, None) -> openSourceSink filename
+        | (Some source, Some sink) ->
+            if source.filename != filename then begin
+              closeSourceSink source sink;
+              openSourceSink filename
+            end
+            else if !currLineno < lineno then
+              (source.file, sink.filename, sink.file)
+            else begin
+              Printf.eprintf "error: lines for %s do not strictly increase (skipping %s)\n" filename inputLine;
+              raise Return
+            end
+        | _ ->
+            failwith "Invariant failed: sourceFile and sinkFile should be in sync."
+      in
 
-    let fileStream = streamFromFile file in
+      let fileStream = streamFromFile file in
 
-    let _ = openFilename := Some filename in
-    let _ = openFile := Some file in
+      let _ = source := Some {file; filename} in
+      let _ = sink := Some {filename = tempFilename; file = tempFile} in
 
-    let checkForMatch line =
-      currLineno := !currLineno + 1;
-      if !currLineno = lineno; then
+      (* TODO(jez) This still doesn't chomp the newline from the end of the line. *)
+      let updateLine line =
+        currLineno := !currLineno + 1;
+        let atRelevantLine = !currLineno = lineno in
         let line' =
-          if caseSensitive
-          then line
-          else String.map Char.lowercase_ascii line
+          if atRelevantLine
+          then
+            if global
+            then Str.global_replace re replace line
+            else Str.replace_first re replace line
+          else
+            line
         in
 
-        (* Using <> to simulate XOR. *)
-        if containsMatch re line' <> invert
-        then print_endline @@ filename^":"^(string_of_int lineno)
-        else ();
+        Printf.fprintf tempFile "%s\n" line';
+        flush tempFile;
 
-        raise Break
-      else
-        ()
-    in
+        if atRelevantLine then raise Break else ()
+      in
 
-    try
-      Stream.iter checkForMatch fileStream
-    with Break -> ()
+      try
+        Stream.iter updateLine fileStream
+      with Break -> ()
+    with Return -> ()
   in
 
   Stream.iter processLine inputFileStream;
+
+  begin
+    match (!source, !sink) with
+    | (Some source, Some sink) -> closeSourceSink source sink
+    | _ -> ()
+  end;
+
   0
 
