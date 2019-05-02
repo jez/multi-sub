@@ -66,11 +66,14 @@ let main arg0 argv =
 
   let openSourceSink filename =
     let _ = currLineno := 0 in
+    let perms = (Unix.stat filename).st_perm in
     let file = open_in filename in
     let mode = [Open_text; Open_wronly; Open_creat] in
     let prefix = "tmp." in
     let suffix = "" in
-    let (tempFilename, tempFile) = Filename.open_temp_file ~mode prefix suffix in
+    let (tempFilename, tempFile) =
+      Filename.open_temp_file ~mode ~perms prefix suffix
+    in
 
     (file, tempFilename, tempFile)
   in
