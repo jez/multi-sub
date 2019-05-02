@@ -1,0 +1,4 @@
+(executable
+  (name MultiSed)
+  (public_name multi-sed)
+  (libraries lib))
