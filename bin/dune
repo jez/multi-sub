@@ -1,4 +1,4 @@
 (executable
-  (name MultiSed)
-  (public_name multi-sed)
+  (name MultiSub)
+  (public_name multi-sub)
   (libraries lib))
