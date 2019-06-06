@@ -54,7 +54,12 @@ let main arg0 argv =
 
   let inputFile =
     match input with
-    | Options.FromStdin -> stdin
+    | Options.FromStdin ->
+        ( if Unix.isatty Unix.stdin
+          then prerr_endline "Warning: reading from stdin, which is a tty."
+          else ()
+        ; stdin
+        )
     | Options.FromFile inputFilename -> open_in inputFilename
   in
   let inputFileStream = streamFromFile inputFile in
