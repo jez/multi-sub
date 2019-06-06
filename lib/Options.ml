@@ -4,8 +4,7 @@ let version = "0.2.0"
 let usage () =
   String.concat "\n" [
     "Usage:";
-    (* TOOD(jez) Make sure this is short when we install. Or make it short. *)
-    "  "^("multi-sub")^" [options] <pattern> <replace> [<locs.txt>]";
+    "  multi-sub [options] <pattern> <replace> [<locs.txt>]";
     "";
     "Substitutes in the mentioned lines for the pattern and prints the lines";
     "that contain a match.";
