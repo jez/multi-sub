@@ -9,16 +9,15 @@ cache:
 
 matrix:
   include:
-    # - os: 'linux'
     - os: 'osx'
+    - os: 'linux'
       addons:
-        homebrew:
+        apt:
+          sources:
+            - sourceline: 'ppa:ansible/bubblewrap'
           packages:
-            - opam
-os:
-  # TODO(jez) Test on Linux
-  # - linux
-  - 'osx'
+            # Needed by opam2 on linux
+            - bubblewrap
 
 script:
   - '.ci/build.sh'

@@ -2,35 +2,48 @@
 
 set -euo pipefail
 
-fold_start() {
-  echo -e "travis_fold:start:$1\\033[33;1m$2\\033[0m"
+opam_release() {
+  local version="$1"
+  local arch_os="$2"
+
+  echo "https://github.com/ocaml/opam/releases/download/$version/opam-$version-$arch_os"
 }
 
-fold_end() {
-  echo -e "\\ntravis_fold:end:$1\\r"
-}
+echo "--- Setting up OPAM environment ----------------------------------------"
 
-# -----------------------------------------------------------------------------
-fold_start opam "Setting up OPAM environment"
+opam_version="2.0.4"
+opam_release_url=
+case "$TRAVIS_OS_NAME" in
+  osx)   opam_release_url="$(opam_release "$opam_version" "x86_64-macos")" ;;
+  linux) opam_release_url="$(opam_release "$opam_version" "x86_64-linux")" ;;
+  *)
+    echo "Unknown TRAVIS_OS_NAME: $TRAVIS_OS_NAME"
+    exit 1
+    ;;
+esac
+
+curl -L "$opam_release_url" > opam
+sudo mv -v opam /usr/local/bin/opam
+sudo chmod +x /usr/local/bin/opam
 
 opam init --yes
 eval "$(opam config env)"
 
-opam switch multi-sub --alias-of 4.07.0
+abs_pwd="$(pwd -P)"
+if [ "$(opam switch show)" != "$abs_pwd" ]; then
+  rm -rf _opam
+  opam switch create . ocaml-base-compiler.4.07.1
+fi
 eval "$(opam config env)"
 
 # TODO(jez) pin dependencies?
 opam install dune
 
-fold_end opam
-# -----------------------------------------------------------------------------
-fold_start dune.build "Building project"
+echo "--- Building project ---------------------------------------------------"
 
 dune build
 
-fold_end dune.build
-# -----------------------------------------------------------------------------
-fold_start dune.install "Creating release tarfile"
+echo "--- Creating release tarfile -------------------------------------------"
 
 mkdir -p "$HOME/.local"
 dune install --prefix="$HOME/.local"
@@ -42,6 +55,3 @@ if [ "$TRAVIS_TAG" != "" ]; then
     doc/multi-sub/README.md \
     doc/multi-sub/LICENSE
 fi
-
-fold_end dune.install
-# -----------------------------------------------------------------------------
