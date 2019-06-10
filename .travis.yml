@@ -1,0 +1,34 @@
+# Do not choose a language; we provide our own build tools.
+language: 'generic'
+
+cache:
+  directories:
+    - ~/.opam
+    - _opam
+    - _build
+
+matrix:
+  include:
+    # - os: 'linux'
+    - os: 'osx'
+      addons:
+        homebrew:
+          packages:
+            - opam
+os:
+  # TODO(jez) Test on Linux
+  # - linux
+  - 'osx'
+
+script:
+  - '.ci/build.sh'
+
+# Initialized with 'travis setup releases'
+deploy:
+  provider: releases
+  api_key:
+    secure: KWJ00oab4Zf1XSCEf3cXu81DUz3c/1xWMhYtzLyuhQ4+V7w4Bnr3mJNkhrb2lzq7ClNcWv/f3wT3vF9HalsrMBKHsIZiDxn1+ZTzZ+flZVrfiKGEqvQMDroP6qEzl6jQPfQAz5roW8JU0psFihWJ4v2U7d8e0eL/L+elYl46vY81LJ53B1feh8A9sveUf+RiMRPORl8y1nThx9S8DN1eWiZTS6v733sIJjgvdPhu59nkEEhG1QB+D6tatDdTbFCu2JddS4e7v9dTT5WM6rd33syIGIu5YLaiWUg18tAtx1O3rzFPEj9MI6qzdpPrOl/fTwb1+drBGJ5qeDSatcrZbwlXIWTmNFyV3EYjO+ZOmPxeMJG1E5olsgG9/g5/9pyfjYPVaOtEMeveB1XhxNfB97yJznaO3hfEpgVwbGKBluKpK8v/IXu7vwFFnjgWFpNUYvTpHNfUDoskhxwjA5d2ROITi+4Z3rEGFqJUhch4mbp8O2zqRJMqzxDFYbtlneyW6tDhbqobaP+imqBahHekktblJV4FGRCpl+AhmOQqq3aUn/PlldSvxwwAj04CBf+iXUjuLXcI15PIqRYmCQIMaERmdZaYGMCVPjXLK6w05LNHW/+bDAMM1ltml2sAq0+Vp7OMFsQ9n29d/cktzQXDzaC7cD+a8e5LUkf+rTIM+1g=
+  file: "$HOME/.local/bin/multi-sub-$TRAVIS_TAG-$TRAVIS_OS_NAME.tar.gz"
+  on:
+    tags: true
+    repo: jez/multi-sub
