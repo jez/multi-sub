@@ -1,13 +1,11 @@
-let version = "0.2.0"
+let version = "0.0.0"
 
-(* TODO(jez) Update this for OCaml regex. *)
 let usage () =
   String.concat "\n" [
     "Usage:";
     "  multi-sub [options] <pattern> <replace> [<locs.txt>]";
     "";
-    "Substitutes in the mentioned lines for the pattern and prints the lines";
-    "that contain a match.";
+    "Substitutes the pattern with the replacement in the mentioned lines.";
     "";
     "Arguments:";
     "  <pattern>      A valid OCaml regular expression[1].";

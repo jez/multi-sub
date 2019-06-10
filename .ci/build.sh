@@ -36,7 +36,6 @@ if [ "$(opam switch show)" != "$abs_pwd" ]; then
 fi
 eval "$(opam config env)"
 
-# TODO(jez) pin dependencies?
 opam install dune
 
 echo "--- Building project ---------------------------------------------------"
