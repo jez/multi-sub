@@ -33,6 +33,7 @@ exception Return
 
 type source_sink = {
   filename : string;
+  tmpfile : string;
   source : in_channel;
   sink : out_channel;
 }
@@ -76,11 +77,18 @@ let main arg0 argv =
 
     let source = open_in filename in
 
-    let mode = [Open_text; Open_wronly] in
-    let perms = (Unix.stat filename).st_perm in
-    let sink = open_out_gen mode perms filename in
+    let stats = Unix.stat filename in
 
-    (source, sink)
+    let mode = [Open_text; Open_wronly; Open_creat] in
+    let perms = stats.st_perm in
+    let tmpfile = Printf.sprintf "%s.%d.bak" filename (Unix.getpid ()) in
+    let sink = open_out_gen mode perms tmpfile in
+
+    let uid = stats.st_uid in
+    let gid = stats.st_gid in
+    Unix.chown tmpfile uid gid;
+
+    (tmpfile, source, sink)
   in
 
   let closeSourceSink ss =
@@ -89,6 +97,8 @@ let main arg0 argv =
         Printf.fprintf ss.sink "%s\n" (input_line ss.source)
       done
     with End_of_file -> ();
+
+    Sys.rename ss.tmpfile ss.filename;
 
     close_in ss.source;
     close_out ss.sink
@@ -99,7 +109,7 @@ let main arg0 argv =
       let (filename, lineno) = parseInputLine inputLine in
 
       (* We go through great effort to reuse a file that's already open. *)
-      let (source, sink) =
+      let (tmpfile, source, sink) =
         match !sourceSink with
         | None -> openSourceSink filename
         | Some ss ->
@@ -108,7 +118,7 @@ let main arg0 argv =
               openSourceSink filename
             end
             else if !currLineno < lineno then
-              (ss.source, ss.sink)
+              (ss.tmpfile, ss.source, ss.sink)
             else begin
               Printf.eprintf "error: lines for %s do not strictly increase (skipping %s)\n" filename inputLine;
               raise Return
@@ -117,7 +127,7 @@ let main arg0 argv =
 
       let fileStream = streamFromFile source in
 
-      let _ = sourceSink := Some {filename; source; sink} in
+      let _ = sourceSink := Some {filename; tmpfile; source; sink} in
 
       let updateLine line =
         currLineno := !currLineno + 1;
