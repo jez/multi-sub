@@ -115,7 +115,7 @@ test_one() {
     cd "$actual"
     # The fact that this splits on word boundaries powers arg forwarding.
     # shellcheck disable=SC2046
-    if ! "$EXE" $(< "$test_dir/args.txt") \
+    if ! eval "'$EXE' $(< "$test_dir/args.txt")" \
         < "$test_dir/stdin.log" \
         1> "$actual/input/stdout.log" \
         2> "$actual/input/stderr.log"; then
