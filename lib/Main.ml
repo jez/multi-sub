@@ -1,25 +1,23 @@
-(* TODO(jez) Audit for snek_case *)
-
 (* Input lines look like
  *
  *   file.txt:20
  *
- * and since they're coming from TextIO.inputLine, they're guaranteed to have
+ * and since they're coming from TextIO.input_line, they're guaranteed to have
  * a trailing newline.
  *)
-let parseInputLine inputLine =
-  let parseFailure () =
-    ( prerr_endline @@ "Couldn't parse input line: "^inputLine
+let parse_input_line input_line =
+  let parse_failure () =
+    ( prerr_endline @@ "Couldn't parse input line: "^input_line
     ; exit 1)
   in
-  match Str.split (Str.regexp "[:\n\r]") inputLine with
-  | [filename; linenoStr] ->
-      (match int_of_string_opt linenoStr with
+  match Str.split (Str.regexp "[:\n\r]") input_line with
+  | [filename; lineno_str] ->
+      (match int_of_string_opt lineno_str with
        | Some lineno -> (filename, lineno)
-       | _ -> parseFailure ())
-  | _ -> parseFailure ()
+       | _ -> parse_failure ())
+  | _ -> parse_failure ()
 
-let streamFromFile file =
+let stream_from_file file =
   Stream.from (fun _ -> try Some (input_line file) with End_of_file -> None)
 
 let containsMatch re line =
@@ -40,20 +38,20 @@ type source_sink = {
 
 let main arg0 argv =
   let Options.{
-    pattern = inputPattern;
+    pattern = input_pattern;
     replace;
     input;
     global;
-    caseSensitive;
+    case_sensitive;
   } = Options.parseArgs argv in
 
   let re =
-    if caseSensitive
-    then Str.regexp inputPattern
-    else Str.regexp_case_fold inputPattern
+    if case_sensitive
+    then Str.regexp input_pattern
+    else Str.regexp_case_fold input_pattern
   in
 
-  let inputFile =
+  let input_file =
     match input with
     | Options.FromStdin ->
         ( if Unix.isatty Unix.stdin
@@ -61,19 +59,19 @@ let main arg0 argv =
           else ()
         ; stdin
         )
-    | Options.FromFile inputFilename -> open_in inputFilename
+    | Options.FromFile input_filename -> open_in input_filename
   in
-  let inputFileStream = streamFromFile inputFile in
+  let input_file_stream = stream_from_file input_file in
 
   (* We keep three pieces of state, to avoid reopening files and rereading
    * lines that we've already seen. *)
-  let sourceSink = ref None in
-  let currLineno = ref 0 in
+  let source_sink = ref None in
+  let curr_lineno = ref 0 in
 
-  let openSourceSink filename =
+  let open_source_sink filename =
     (* Always reset lineno when opening a file, because
      * we'll always start seeking from the file start. *)
-    let _ = currLineno := 0 in
+    let _ = curr_lineno := 0 in
 
     let source = open_in filename in
 
@@ -91,7 +89,7 @@ let main arg0 argv =
     (tmpfile, source, sink)
   in
 
-  let closeSourceSink ss =
+  let close_source_sink ss =
     try
       while true; do
         Printf.fprintf ss.sink "%s\n" (input_line ss.source)
@@ -104,36 +102,36 @@ let main arg0 argv =
     close_out ss.sink
   in
 
-  let processLine inputLine =
+  let process_line input_line =
     try
-      let (filename, lineno) = parseInputLine inputLine in
+      let (filename, lineno) = parse_input_line input_line in
 
       (* We go through great effort to reuse a file that's already open. *)
       let (tmpfile, source, sink) =
-        match !sourceSink with
-        | None -> openSourceSink filename
+        match !source_sink with
+        | None -> open_source_sink filename
         | Some ss ->
             if ss.filename != filename then begin
-              closeSourceSink ss;
-              openSourceSink filename
+              close_source_sink ss;
+              open_source_sink filename
             end
-            else if !currLineno < lineno then
+            else if !curr_lineno < lineno then
               (ss.tmpfile, ss.source, ss.sink)
             else begin
-              Printf.eprintf "error: lines for %s do not strictly increase (skipping %s)\n" filename inputLine;
+              Printf.eprintf "error: lines for %s do not strictly increase (skipping %s)\n" filename input_line;
               raise Return
             end
       in
 
-      let fileStream = streamFromFile source in
+      let file_stream = stream_from_file source in
 
-      let _ = sourceSink := Some {filename; tmpfile; source; sink} in
+      let _ = source_sink := Some {filename; tmpfile; source; sink} in
 
-      let updateLine line =
-        currLineno := !currLineno + 1;
-        let atRelevantLine = !currLineno = lineno in
+      let update_line line =
+        curr_lineno := !curr_lineno + 1;
+        let at_relevant_line = !curr_lineno = lineno in
         let line' =
-          if atRelevantLine
+          if at_relevant_line
           then
             if global
             then Str.global_replace re replace line
@@ -146,20 +144,20 @@ let main arg0 argv =
         Printf.fprintf sink "%s\n" line';
         flush sink;
 
-        if atRelevantLine then raise Break else ()
+        if at_relevant_line then raise Break else ()
       in
 
       try
-        Stream.iter updateLine fileStream
+        Stream.iter update_line file_stream
       with Break -> ()
     with Return -> ()
   in
 
-  Stream.iter processLine inputFileStream;
+  Stream.iter process_line input_file_stream;
 
   begin
-    match !sourceSink with
-    | Some ss -> closeSourceSink ss
+    match !source_sink with
+    | Some ss -> close_source_sink ss
     | _ -> ()
   end;
 

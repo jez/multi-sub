@@ -46,7 +46,7 @@ end
 module ExtraOptions = struct
   type t = {
     global : bool;
-    caseSensitive : bool;
+    case_sensitive : bool;
   }
 end
 
@@ -55,18 +55,18 @@ type t = {
   replace : string;
   input : input;
   global : bool;
-  caseSensitive : bool;
+  case_sensitive : bool;
 }
 
 let withExtraOptions
   RequiredOptions.{pattern; replace; input}
-  ExtraOptions.{global; caseSensitive} =
+  ExtraOptions.{global; case_sensitive} =
   {
     pattern;
     replace;
     input;
     global;
-    caseSensitive;
+    case_sensitive;
   }
 
 let rec accumulateOptions argv acc =
@@ -85,13 +85,13 @@ let rec accumulateOptions argv acc =
   | "--global"::argv' ->
       accumulateOptions argv' ExtraOptions.{acc with global = true}
   | "-i"::argv' ->
-      accumulateOptions argv' ExtraOptions.{acc with caseSensitive = false}
+      accumulateOptions argv' ExtraOptions.{acc with case_sensitive = false}
   | "--ignore-case"::argv' ->
-      accumulateOptions argv' ExtraOptions.{acc with caseSensitive = false}
+      accumulateOptions argv' ExtraOptions.{acc with case_sensitive = false}
   | "-s"::argv' ->
-      accumulateOptions argv' ExtraOptions.{acc with caseSensitive = true}
+      accumulateOptions argv' ExtraOptions.{acc with case_sensitive = true}
   | "--case-sensitive"::argv' ->
-      accumulateOptions argv' ExtraOptions.{acc with caseSensitive = true}
+      accumulateOptions argv' ExtraOptions.{acc with case_sensitive = true}
   | [] -> failWithUsage "Missing required <pattern> argument."
   | [pattern; replace] ->
       withExtraOptions {pattern; replace; input = FromStdin} acc
@@ -102,7 +102,7 @@ let rec accumulateOptions argv acc =
 let defaultOptions =
   ExtraOptions.{
     global = false;
-    caseSensitive = true;
+    case_sensitive = true;
   }
 
 let parseArgs argv = accumulateOptions argv defaultOptions
