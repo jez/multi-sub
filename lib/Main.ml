@@ -20,12 +20,6 @@ let parse_input_line input_line =
 let stream_from_file file =
   Stream.from (fun _ -> try Some (input_line file) with End_of_file -> None)
 
-let containsMatch re line =
-  try
-    let _ = Str.search_forward re line 0 in
-    true
-  with Not_found -> false
-
 exception Break
 exception Return
 
