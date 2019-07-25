@@ -1,2 +1,2 @@
 
-<!-- TODO(jez) Document .on_failure / .checked once API is stable. -->
+<!-- Document .on_failure / .checked once API is stable. -->
