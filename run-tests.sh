@@ -135,7 +135,15 @@ test_one() {
     fi
   )
 
-  # TODO(jez) Remove empty stdout / stderr before diffing
+  if ! [ -f "$test_dir/expected/stdout.log" ] && \
+     ! [ -s "$actual/input/stdout.log" ]; then
+    rm "$actual/input/stdout.log"
+  fi
+  if ! [ -f "$test_dir/expected/stderr.log" ] && \
+     ! [ -s "$actual/input/stderr.log" ]; then
+    rm "$actual/input/stderr.log"
+  fi
+
   if ! diff -ur "$test_dir/expected" "$actual/input"; then
     if [ "$UPDATE" = "" ]; then
       error "├─ expected expected/ did not match actual/ folder"
