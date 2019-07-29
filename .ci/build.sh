@@ -38,9 +38,9 @@ eval "$(opam config env)"
 
 opam install dune
 
-echo "--- Building project ---------------------------------------------------"
+echo "--- Building and testing project ---------------------------------------"
 
-dune build
+./run-tests.sh
 
 echo "--- Creating release tarfile -------------------------------------------"
 
