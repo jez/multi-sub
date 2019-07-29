@@ -75,7 +75,7 @@ test_one() {
     if [ "$UPDATE" = "" ]; then
       error "├─ each test must have an input/ dirctory: $test_dir_rel/input"
       info  "└─ (re-run with --update to create)"
-      exit 1
+      return 1
     else
       attn "├─ creating missing input/ directory: $test_dir_rel/input"
       mkdir -p "$test_dir/input"
@@ -86,7 +86,7 @@ test_one() {
     if [ "$UPDATE" = "" ]; then
       error "└─ each test must have a stdin.log file: $test_dir_rel/stdin.log"
       info  "└─ (re-run with --update to create)"
-      exit 1
+      return 1
     else
       attn "├─ creating missing stdin.log file: $test_dir_rel/stdin.log"
       touch "$test_dir/stdin.log"
@@ -97,7 +97,7 @@ test_one() {
     if [ "$UPDATE" = "" ]; then
       error "└─ each test must have an args.txt file: $test_dir_rel/args.txt"
       info  "└─ (re-run with --update to create)"
-      exit 1
+      return 1
     else
       attn "├─ creating missing args.txt file: $test_dir_rel/args.txt"
       touch "$test_dir/args.txt"
@@ -108,7 +108,7 @@ test_one() {
     if [ "$UPDATE" = "" ]; then
       error "└─ each test must have an expected/ dirctory: $test_dir_rel/expected"
       info  "└─ (re-run with --update to create)"
-      exit 1
+      return 1
     else
       attn "├─ creating missing expected/ directory: $test_dir_rel/expected"
       mkdir -p "$test_dir/expected"
@@ -139,7 +139,7 @@ test_one() {
         cat "$actual/input/stderr.log"
         error "└─ (end stderr)"
       fi
-      exit 1
+      return 1
     fi
   )
 
@@ -156,7 +156,7 @@ test_one() {
     if [ "$UPDATE" = "" ]; then
       error "├─ expected expected/ did not match actual/ folder"
       error "└─ see output above. Run with --update to fix."
-      exit 1
+      return 1
     else
       attn "├─ overwriting expected/ with actual/"
       rm -rf "$test_dir/expected"
@@ -167,18 +167,45 @@ test_one() {
   success "└─ test passed."
 }
 
+failing_tests=()
+passing_tests=()
 for test_dir in "${TESTS[@]}"; do
   if command -v realpath &> /dev/null; then
     test_case="$(realpath "$test_dir")"
   else
     test_case="$PWD/$test_dir"
   fi
-  test_one "$test_case"
 
-  # TODO(jez) Use return instead of exit to collect a list of passing / failing tests.
+  if test_one "$test_case"; then
+    passing_tests+=("$test_dir")
+  else
+    failing_tests+=("$test_dir")
+  fi
 done
 
 echo
-success "All tests passed."
 
+if [ "${#passing_tests[@]}" -ne 0 ]; then
+  echo
+  echo "───── Passing tests ────────────────────────────────────────────────────"
+  for passing_test in "${passing_tests[@]}"; do
+    success "$passing_test"
+  done
+fi
 
+if [ "${#failing_tests[@]}" -ne 0 ]; then
+  echo
+  echo "───── Failing tests ────────────────────────────────────────────────────"
+
+  for failing_test in "${failing_tests[@]}"; do
+    error "$failing_test"
+  done
+
+  echo
+  echo "There were failing tests. To re-run all failing tests:"
+  echo
+  echo "    ./run-tests.sh ${failing_tests[*]}"
+  echo
+
+  exit 1
+fi
