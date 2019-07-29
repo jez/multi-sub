@@ -11,6 +11,11 @@ else
   exit 1
 fi
 
+# TODO(jez) Require realpath?
+if ! command -v realpath &> /dev/null; then
+  attn "'realpath' not found. Some run-tests.sh behaviors may be different."
+fi
+
 ARGV=()
 UPDATE=
 VERBOSE=
@@ -45,13 +50,16 @@ else
   TESTS=("${ARGV[@]}")
 fi
 
-# TODO(jez) I think this might be the wrong path
 EXE="$PWD/_build/install/default/bin/multi-sub"
 
 test_one() {
   local test_dir="$1"
   local test_dir_rel
-  test_dir_rel="$(realpath --relative-to=. "$test_dir")"
+  if command -v realpath &> /dev/null; then
+    test_dir_rel="$(realpath --relative-to=. "$test_dir")"
+  else
+    test_dir_rel="$test_dir"
+  fi
   info "Running test: $test_dir_rel"
 
   local actual
@@ -76,33 +84,33 @@ test_one() {
 
   if ! [ -f "$test_dir/stdin.log" ]; then
     if [ "$UPDATE" = "" ]; then
-      error "└─ each test must have a stdin.log file: $test_dir/stdin.log"
+      error "└─ each test must have a stdin.log file: $test_dir_rel/stdin.log"
       info  "└─ (re-run with --update to create)"
       exit 1
     else
-      attn "├─ creating missing stdin.log file: $test_dir/stdin.log"
+      attn "├─ creating missing stdin.log file: $test_dir_rel/stdin.log"
       touch "$test_dir/stdin.log"
     fi
   fi
 
   if ! [ -f "$test_dir/args.txt" ]; then
     if [ "$UPDATE" = "" ]; then
-      error "└─ each test must have an args.txt file: $test_dir/args.txt"
+      error "└─ each test must have an args.txt file: $test_dir_rel/args.txt"
       info  "└─ (re-run with --update to create)"
       exit 1
     else
-      attn "├─ creating missing args.txt file: $test_dir/args.txt"
+      attn "├─ creating missing args.txt file: $test_dir_rel/args.txt"
       touch "$test_dir/args.txt"
     fi
   fi
 
   if ! [ -d "$test_dir/expected" ]; then
     if [ "$UPDATE" = "" ]; then
-      error "└─ each test must have an expected/ dirctory: $test_dir/expected"
+      error "└─ each test must have an expected/ dirctory: $test_dir_rel/expected"
       info  "└─ (re-run with --update to create)"
       exit 1
     else
-      attn "├─ creating missing expected/ directory: $test_dir/expected"
+      attn "├─ creating missing expected/ directory: $test_dir_rel/expected"
       mkdir -p "$test_dir/expected"
     fi
   fi
@@ -160,8 +168,12 @@ test_one() {
 }
 
 for test_dir in "${TESTS[@]}"; do
-  # TODO(jez) Drop realpath dependency?
-  test_one "$(realpath "$test_dir")"
+  if command -v realpath &> /dev/null; then
+    test_case="$(realpath "$test_dir")"
+  else
+    test_case="$PWD/$test_dir"
+  fi
+  test_one "$test_case"
 
   # TODO(jez) Use return instead of exit to collect a list of passing / failing tests.
 done
