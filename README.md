@@ -133,14 +133,18 @@ Download the binary from the releases page:
 ## TODO
 
 - Add test suite
-  - Test that we write the end of the file out
   - Test that we preserve permissions
   - Document how to run and add tests
+  - Test for out-of-order input lines
+  - Test for options (`-g`, `-i`, `-s`)
+  - Test that missing arguments gives error
+  - Test that we don't add a trailing newline if the file doesn't have one
 - Publish Homebrew formula
   - Document how to bump the version
 - Set up ShellCheck
 - Set up source code formatter
 - Document how to set up editor tools
+  - <https://medium.com/@bobbypriambodo/starting-an-ocaml-app-project-using-dune-d4f74e291de8>
 
 
 

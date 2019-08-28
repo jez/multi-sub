@@ -1,0 +1,3 @@
+tests/logging.sh linguist-vendored
+.ci/build.sh linguist-vendored
+run-tests.sh linguist-vendored
